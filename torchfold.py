@@ -125,11 +125,11 @@ class Fold(object):
                             raise ValueError("Can not use more then one of nobatch argument, got: %s." % str(arg_item))
                     res.append(arg[0].get(values))
             elif all(isinstance(arg_item, int) for arg_item in arg):
-                if self._cuda:
-                    var = Variable(
-                        torch.cuda.LongTensor(arg), volatile=self.volatile)
-                else:
-                    var = Variable(
+                #if self._cuda:
+                #    var = Variable(
+                #        torch.cuda.LongTensor(arg), volatile=self.volatile)
+                #else:
+                var = Variable(
                         torch.LongTensor(arg), volatile=self.volatile)
                 res.append(var)
             else:

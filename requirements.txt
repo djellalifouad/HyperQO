@@ -1,0 +1,10 @@
+et-xmlfile==1.1.0
+mysql==0.0.3
+mysqlclient==2.1.1
+numpy==1.21.6
+openpyxl==3.1.2
+psqlparse==1.0rc7
+psycopg2==2.9.5
+six==1.16.0
+torch==1.13.1
+typing-extensions==4.5.0

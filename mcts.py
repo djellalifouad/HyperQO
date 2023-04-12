@@ -327,10 +327,10 @@ class MCTSHinterSearch():
             self.dfs(child,depth)
     def  savemodel(self,):
         torch.save(predictionNet.cpu().state_dict(), 'model/'+self.modelhead+".pth")
-        predictionNet.cuda()
+        predictionNet.cpu()
     def loadmodel(self,):
         predictionNet.load_state_dict(torch.load('model/'+self.modelhead+".pth"))
-        predictionNet.cuda()
+        predictionNet.cpu()
     def findCanHints(self, totalNumberOfTables, numberOfTables, queryEncode,all_joins,joins_with_predicate,nodes,depth=2):
         self.total_cnt +=1
         if self.total_cnt%200==0:

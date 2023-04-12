@@ -55,7 +55,6 @@ class Hinter:
             leading_length = len(alias)
         join_list_with_predicate = self.mcts_searcher.findCanHints(40,len(alias),sql_vec,id_joins,id_joins_with_predicate,alias_id,depth=leading_length)
         self.mcts_time_list.append(timer.record('mcts_time_list'))
-        
         leading_list = []
         plan_jsons = []
         leadings_utility_list = []

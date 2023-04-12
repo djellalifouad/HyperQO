@@ -53,7 +53,7 @@ for epoch in range(1):
         s4 += MPHE_time
         s_pg += pg_latency
         s_hinter += sum(actual_time)/1000
-        # print()
+        print("SQL :",x[0])
         print([actual_plans,actual_time])
         print("%.4f %.4f %.4f %.4f %.4f %.4f %.4f"%(s1,s2,s3,s4,s_pg,s_hinter,s_hinter/s_pg))
         import json
