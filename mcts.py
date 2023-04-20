@@ -10,7 +10,7 @@ config = Config()
 
 # from models import ValueNet
 import torch
-# model_path = './saved_models/supervised.pt'
+model_path = './model/log_c3_h64_s4_t3.pth'
 from NET import ValueNet
 predictionNet = ValueNet(config.mcts_input_size).to(config.cpudevice)
 for name, param in predictionNet.named_parameters():
@@ -20,9 +20,8 @@ for name, param in predictionNet.named_parameters():
         init.xavier_normal(param)
     else:
         init.uniform(param)
-# predictionNet = ValueNet(856, 5)
-# predictionNet.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
-# predictionNet.eval()
+
+predictionNet.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
 import torch.nn.functional as F
 import torch.optim as optim
 import torch
@@ -38,7 +37,7 @@ def getValue(inputState1,inputState2):
 import time
 def getReward(state):
     inputState1 = state.inputState1
-    # inputState1 = torch.tensor(state.queryEncode, dtype=torch.float32).to(config.cpudevice)
+    #inputState1 = torch.tensor(state.queryEncode, dtype=torch.float32).to(config.cpudevice)
     inputState2 = torch.tensor(state.order_list, dtype=torch.long).to(config.cpudevice)
     startTime = time.time()
     with torch.no_grad():
@@ -333,8 +332,8 @@ class MCTSHinterSearch():
         predictionNet.cpu()
     def findCanHints(self, totalNumberOfTables, numberOfTables, queryEncode,all_joins,joins_with_predicate,nodes,depth=2):
         self.total_cnt +=1
-        if self.total_cnt%200==0:
-            self.savemodel()
+        #if self.total_cnt%200==0:
+        #    self.savemodel()
         initialState = planState(totalNumberOfTables, numberOfTables, queryEncode,
                                 all_joins,joins_with_predicate,nodes)
         

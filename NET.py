@@ -246,15 +246,15 @@ class TreeNet:
         self.memory.updateWeight(samples_idx,new_weight)
         return loss_value,mean,variance,torch.exp(multi_value[:,config.head_num]).data.reshape(-1)
         
-    # def predict(self,plan_json,sql_vec,target_value):
-    #     tree_feature = self.tree_builder.plan_to_feature_tree(plan_json)
-    #     target_feature = self.target_feature(target_value)
-    #     sql_feature = self.value_network.sql_feature(sql_vec)
-    #     multi_value = self.plan_to_value(tree_feature=tree_feature,sql_feature = sql_feature)
-    #     loss_value = self.loss(multi_value=multi_value[:,:config.head_num],target=target_feature,optimize=False,var = multi_value[:,config.head_num])
-    #     mean,variance  = self.mean_and_variance(multi_value=multi_value[:,:config.head_num])
-    #     from math import e 
-    #     return loss_value,mean,variance,self.value_extractor.decode(multi_value[:,config.head_num].item())
+    def predict(self,plan_json,sql_vec,target_value):
+         tree_feature = self.tree_builder.plan_to_feature_tree(plan_json)
+         target_feature = self.target_feature(target_value)
+         sql_feature = self.value_network.sql_feature(sql_vec)
+         multi_value = self.plan_to_value(tree_feature=tree_feature,sql_feature = sql_feature)
+         loss_value = self.loss(multi_value=multi_value[:,:config.head_num],target=target_feature,optimize=False,var = multi_value[:,config.head_num])
+         mean,variance  = self.mean_and_variance(multi_value=multi_value[:,:config.head_num])
+         from math import e
+         return loss_value,mean,variance,self.value_extractor.decode(multi_value[:,config.head_num].item())
     
     # def predict(self,plan_json,sql_vec,target_value):
     #     tree_feature = self.tree_builder.plan_to_feature_tree(plan_json)

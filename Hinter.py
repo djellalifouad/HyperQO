@@ -3,8 +3,12 @@ from math import e
 from PGUtils import pgrunner
 import torch
 from KNN import KNN
+from adapterToHybrid.HybridAdapter import  HybridAdapter
+from algos.II import  iterative_improvement
+from algos.SA import simulated_annealing
+from  algos.MinSel import min_selectivity
 import time
-
+from rtos_learned_query_optimizer.run import getJoinOrder
 
 def formatFloat(t):
     try:
@@ -49,49 +53,69 @@ class Hinter:
         id_joins_with_predicate = [(self.sql2vec.aliasname2id[p[0]],self.sql2vec.aliasname2id[p[1]]) for p in self.sql2vec.join_list_with_predicate]
         id_joins = [(self.sql2vec.aliasname2id[p[0]],self.sql2vec.aliasname2id[p[1]]) for p in self.sql2vec.join_list]
         leading_length = config.leading_length
+        # get join order algorithm
+        join_order_algorithm = config.join_order_algorithm
         if leading_length==-1:
             leading_length = len(alias)
         if leading_length>len(alias):
             leading_length = len(alias)
-        join_list_with_predicate = self.mcts_searcher.findCanHints(40,len(alias),sql_vec,id_joins,id_joins_with_predicate,alias_id,depth=leading_length)
+        #Call mcts
+        if join_order_algorithm == 'mcts':
+            join_list_with_predicate = self.mcts_searcher.findCanHints(40,len(alias),sql_vec,id_joins,id_joins_with_predicate,alias_id,depth=leading_length)
+        #Call Iterative improvement
+        elif join_order_algorithm == 'ii':
+            join_list_with_predicate = HybridAdapter.adaptReturn(iterative_improvement(sql,3)[0])
+        #Call simulated anealing
+        elif join_order_algorithm == 'sa':
+            join_list_with_predicate = HybridAdapter.adaptReturn(simulated_annealing(sql,5, 100 ,0.5)[0])
+        #Call minimum selectivity
+        elif join_order_algorithm == 'minSel':
+            join_list_with_predicate = HybridAdapter.adaptReturn(min_selectivity(sql)[0])
+        #Call RTOS
+        else:
+            join_list_with_predicate =  HybridAdapter.adaptReturnRtos(getJoinOrder(sql))
         self.mcts_time_list.append(timer.record('mcts_time_list'))
         leading_list = []
         plan_jsons = []
         leadings_utility_list = []
-        for join in join_list_with_predicate:
-            leading_list.append('/*+Leading('+" ".join([self.sql2vec.id2aliasname[x] for x in join[0][:leading_length]])+')*/')
-            leadings_utility_list.append(join[1])
-            ##To do: parallel planning
-            plan_jsons.append(pgrunner.getCostPlanJson(leading_list[-1]+sql))
+        if join_order_algorithm == 'mcts':
+            for join in join_list_with_predicate:
+                leading_list.append('/*+Leading('+" ".join([self.sql2vec.id2aliasname[x] for x in join[0][:leading_length]])+')*/')
+                leadings_utility_list.append(join[1])
+                ##To do: parallel planning
+                plan_jsons.append(pgrunner.getCostPlanJson(leading_list[-1]+sql))
+        else:
+                leading_list.append('/*+Leading('+" ".join([self.sql2vec.id2aliasname[x] for x in join_list_with_predicate[:leading_length]])+')*/')
+                leadings_utility_list.append(0)
+                ##To do: parallel planning
+                plan_jsons.append(pgrunner.getCostPlanJson(leading_list[-1]+sql))
+        print('leading_list')
+        print(leading_list)
         plan_jsons.extend([plan_json_PG])
         timer.reset('MHPE_time_list')
         plan_times = self.predictWithUncertaintyBatch(plan_jsons=plan_jsons,sql_vec = sql_vec)
         self.MHPE_time_list.append(timer.record('MHPE_time_list'))
         chosen_leading_pair = sorted(zip(plan_times[:config.max_hint_num],leading_list,leadings_utility_list),key = lambda x:x[0][0]+self.knn.kNeightboursSample(x[0]))[0]
         return chosen_leading_pair
-    
     def hinterRun(self,sql):
         self.hinter_times += 1
         plan_json_PG = pgrunner.getCostPlanJson(sql)
         self.samples_plan_with_time = []
         mask = (torch.rand(1,config.head_num,device = config.device)<0.9).long()
-        
         if config.cost_test_for_debug:
             self.pg_runningtime_list.append(pgrunner.getCost(sql)[0])
             self.pg_planningtime_list.append(pgrunner.getCostPlanJson(sql)['Planning Time'])
         else:
             self.pg_runningtime_list.append(pgrunner.getAnalysePlanJson(sql)['Plan']['Actual Total Time'])
             self.pg_planningtime_list.append(pgrunner.getAnalysePlanJson(sql)['Planning Time'])
-        
         sql_vec,alias = self.sql2vec.to_vec(sql)
         plan_jsons = [plan_json_PG]
         plan_times = self.predictWithUncertaintyBatch(plan_jsons=plan_jsons,sql_vec = sql_vec)
-        
         algorithm_idx = 0
-        
         chosen_leading_pair = self.findBestHint(plan_json_PG=plan_json_PG,alias=alias,sql_vec = sql_vec,sql=sql)
         knn_plan = abs(self.knn.kNeightboursSample(plan_times[0]))
-        if chosen_leading_pair[0][0]<plan_times[algorithm_idx][0] and abs(knn_plan)<config.threshold and self.value_extractor.decode(plan_times[0][0])>100:
+        if chosen_leading_pair[0][0]<plan_times[algorithm_idx][0] and abs(knn_plan)<config.threshold and \
+                self.value_extractor.decode(plan_times[0][0])>100:
             from math import e
             max_time_out = min(int(self.value_extractor.decode(chosen_leading_pair[0][0])*3),config.max_time_out)
             if config.cost_test_for_debug:
@@ -105,7 +129,6 @@ class Hinter:
                 self.hinter_runtime_list.append(leading_time_flag[0])
                 ##To do: parallel planning
                 self.hinter_planningtime_list.append(plan_json['Planning Time'])
-            
             self.knn.insertAValue((chosen_leading_pair[0],self.value_extractor.encode(leading_time_flag[0])-chosen_leading_pair[0][0]))
             if config.cost_test_for_debug:
                 self.samples_plan_with_time.append([pgrunner.getCostPlanJson(sql = chosen_leading_pair[1]+sql,timeout=max_time_out),leading_time_flag[0],mask])
@@ -122,7 +145,6 @@ class Hinter:
                     self.samples_plan_with_time.append([plan_json_PG,pg_time_flag[0],mask])
                 else:
                     self.samples_plan_with_time[0] = [plan_json_PG,pg_time_flag[0],mask]
-                
                 self.hinter_time_list.append([max_time_out,pgrunner.getLatency(sql=sql,timeout = 300*1000)[0]])
                 self.chosen_plan.append([chosen_leading_pair[1],'PG'])
             else:
@@ -164,11 +186,8 @@ class Hinter:
             if loss>3:
                 loss=  self.model.optimize()[0]
                 loss1 = self.mcts_searcher.optimize()
-        
-
         assert len(set([len(self.hinter_runtime_list),len(self.pg_runningtime_list),len(self.mcts_time_list),len(self.hinter_planningtime_list),len(self.MHPE_time_list),len(self.hinter_runtime_list),len(self.chosen_plan),len(self.hinter_time_list)]))==1
-        return self.pg_planningtime_list[-1],self.pg_runningtime_list[-1],self.mcts_time_list[-1],self.hinter_planningtime_list[-1],self.MHPE_time_list[-1],self.hinter_runtime_list[-1],self.chosen_plan[-1],self.hinter_time_list[-1]
-
+        return self.samples_plan_with_time[-1][1],self.pg_planningtime_list[-1],self.pg_runningtime_list[-1],self.mcts_time_list[-1],self.hinter_planningtime_list[-1],self.MHPE_time_list[-1],self.hinter_runtime_list[-1],self.chosen_plan[-1],self.hinter_time_list[-1]
     def predictWithUncertaintyBatch(self,plan_jsons,sql_vec):
         sql_feature = self.model.value_network.sql_feature(sql_vec)
         import torchfold
