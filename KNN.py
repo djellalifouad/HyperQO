@@ -23,7 +23,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 '''
-
+from ImportantConfig import Config
+config = Config()
 import numpy as np
 import random
 class KNN:
@@ -42,6 +43,7 @@ class KNN:
             self.kvs = []
         if method =='kd-tree':
             pass
+        self.kvs = config.kvs
     def distance(self,v1,v2):
         # print(zip(v1,v2))
         return sum([abs(v[0]-v[1]) for v in zip(v1[1:2],v2[1:2])])

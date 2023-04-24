@@ -29,9 +29,9 @@ for idx,x in enumerate(queries[:]):
     num_tables = len(table_list)
     print(num_tables)
     # Count the number of tables
-    if not os.path.exists('./dataset2/'+str(num_tables)+'/'):
-        os.makedirs('./dataset2/'+str(num_tables)+'/')
-    with open('./dataset2/'+str(num_tables)+'/'+str(idx)+'.txt', 'w') as f:
+    if not os.path.exists('./datasetS/'+str(num_tables)+'/'):
+        os.makedirs('./datasetS/'+str(num_tables)+'/')
+    with open('./datasetS/'+str(num_tables)+'/'+str(idx)+'.txt', 'w') as f:
         # Write a string to the file
         f.write(x[0])
         f.close()

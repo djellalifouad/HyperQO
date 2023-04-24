@@ -12,10 +12,10 @@ Transition = namedtuple('Transition',
                     ('tree_feature', 'sql_feature', 'target_feature', 'mask','weight'))
 import random
 class ReplayMemory(object):
-    def __init__(self, capacity):
+    def __init__(self, capacity,elements):
         self.capacity = capacity
-        self.memory = []
-        self.position = 0
+        self.memory = elements
+        self.position = len(elements)
     def push(self, *args):
         """Saves a transition."""
         if len(self.memory) < self.capacity:
@@ -68,8 +68,9 @@ class TreeNet:
     def __init__(self,tree_builder,value_network):
         self.tree_builder  = tree_builder#sql2fea.TreeBuilder
         self.value_network = value_network#TreeLSTM.SPINN
-        self.optimizer = optim.Adam(value_network.parameters(),lr = 3e-4   ,betas=(0.9,0.999))
-        self.memory = ReplayMemory(config.mem_size)
+        self.optimizer = optim.Adam(value_network.parameters(),
+                                    lr = 3e-4   ,betas=(0.9,0.999))
+        self.memory = ReplayMemory(config.mem_size,config.mem_element)
         self.loss_function = MSEVAR(config.var_weight)
         # self.loss_function = F.smooth_l1_loss
     def plan_to_value(self,tree_feature,sql_feature):
@@ -197,6 +198,8 @@ class TreeNet:
         mean,variance  = self.mean_and_variance(multi_value=multi_value[:,:config.head_num])
         mean_list = [mean] if isinstance(mean,float) else [x.item() for x in mean]
         new_weight = [abs(x-target_values[idx])*target_values[idx] for idx,x in enumerate(mean_list)]
+        print("new weight")
+        print(new_weight)
         self.memory.updateWeight(samples_idx,new_weight)
         return loss_value,mean,variance,torch.exp(multi_value[:,config.head_num]).data.reshape(-1)
     def optimize_mlp(self):
@@ -314,6 +317,8 @@ class MCTSReplayMemory(object):
         else:
             return self.memory,list(range(len(self.memory)))
     def updateWeight(self,idx_list,weight_list):
+        print("from update weight")
+        print(weight_list)
         for idx,wei in zip(idx_list,weight_list):
             # print(self.memory[idx].weight,weight_list[idx])
             self.memory[idx] = self.memory[idx]._replace(weight=wei)

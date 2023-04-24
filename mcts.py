@@ -247,9 +247,8 @@ class mcts():
         self.root = treeNode(initialState, None)
         for i in range(self.searchLimit):
             self.executeRound()
-
-        # bestChild = self.getBestChild(self.root, 0)
-        # return self.getAction(self.root, bestChild)
+        bestChild = self.getBestChild(self.root, 0)
+        return self.getAction(self.root, bestChild)
     def continueSearch(self):
         for i in range(self.searchLimit):
             self.executeRound()
@@ -332,11 +331,10 @@ class MCTSHinterSearch():
         predictionNet.cpu()
     def findCanHints(self, totalNumberOfTables, numberOfTables, queryEncode,all_joins,joins_with_predicate,nodes,depth=2):
         self.total_cnt +=1
-        #if self.total_cnt%200==0:
-        #    self.savemodel()
+        if self.total_cnt%200==0:
+            self.savemodel()
         initialState = planState(totalNumberOfTables, numberOfTables, queryEncode,
                                 all_joins,joins_with_predicate,nodes)
-        
         searchFactor = config.searchFactor
         currentState = initialState
         # print(len(currentState.getPossibleActions()))
