@@ -8,6 +8,8 @@ from algos.II import  iterative_improvement
 from algos.SA import simulated_annealing
 from  algos.MinSel import min_selectivity
 import time
+from serverParser.parserFinal import create_query
+from extractJoinorder import TreeBuilder2
 from rtos_learned_query_optimizer.run import getJoinOrder
 
 def formatFloat(t):
@@ -64,10 +66,10 @@ class Hinter:
             join_list_with_predicate = self.mcts_searcher.findCanHints(40,len(alias),sql_vec,id_joins,id_joins_with_predicate,alias_id,depth=leading_length)
         #Call Iterative improvement
         elif join_order_algorithm == 'ii':
-            join_list_with_predicate = HybridAdapter.adaptReturn(iterative_improvement(sql,3)[0])
-        #Call simulated anealing
+            join_list_with_predicate = iterative_improvement(sql,20,'test')[2]
+            #Call simulated anealing
         elif join_order_algorithm == 'sa':
-            join_list_with_predicate = HybridAdapter.adaptReturn(simulated_annealing(sql,5, 100 ,0.5)[0])
+            join_list_with_predicate = simulated_annealing(sql,5, 100 ,0.5)[2]
         #Call minimum selectivity
         elif join_order_algorithm == 'minSel':
             join_list_with_predicate = HybridAdapter.adaptReturn(min_selectivity(sql)[0])
@@ -85,15 +87,18 @@ class Hinter:
                 ##To do: parallel planning
                 plan_jsons.append(pgrunner.getCostPlanJson(leading_list[-1]+sql))
         else:
-                leading_list.append('/*+Leading('+" ".join([self.sql2vec.id2aliasname[x] for x in join_list_with_predicate[:leading_length]])+')*/')
+                leading_list.append('/*+Leading('+" ".join([x for x in join_list_with_predicate[:leading_length]])+')*/')
                 leadings_utility_list.append(0)
                 ##To do: parallel planning
                 plan_jsons.append(pgrunner.getCostPlanJson(leading_list[-1]+sql))
         print('leading_list')
         print(leading_list)
         plan_jsons.extend([plan_json_PG])
+        print(plan_jsons)
         timer.reset('MHPE_time_list')
-        plan_times = self.predictWithUncertaintyBatch(plan_jsons=plan_jsons,sql_vec = sql_vec)
+        list =  ['PG']
+        list.extend(leading_list)
+        plan_times = self.predictWithUncertaintyBatch(plan_jsons=plan_jsons,sql_vec = sql_vec,list_value=list)
         self.MHPE_time_list.append(timer.record('MHPE_time_list'))
         chosen_leading_pair = sorted(zip(plan_times[:config.max_hint_num],leading_list,leadings_utility_list),key = lambda x:x[0][0]+self.knn.kNeightboursSample(x[0]))[0]
         return chosen_leading_pair
@@ -110,11 +115,19 @@ class Hinter:
             self.pg_planningtime_list.append(pgrunner.getAnalysePlanJson(sql)['Planning Time'])
         sql_vec,alias = self.sql2vec.to_vec(sql)
         plan_jsons = [plan_json_PG]
+        print('post_gres',len(plan_jsons),)
+
         plan_times = self.predictWithUncertaintyBatch(plan_jsons=plan_jsons,sql_vec = sql_vec)
         algorithm_idx = 0
         chosen_leading_pair = self.findBestHint(plan_json_PG=plan_json_PG,alias=alias,sql_vec = sql_vec,sql=sql)
         knn_plan = abs(self.knn.kNeightboursSample(plan_times[0]))
-        if chosen_leading_pair[0][0]<plan_times[algorithm_idx][0] and abs(knn_plan)<config.threshold and \
+        file = open('scaler.txt', 'a')
+        file.write(str(self.value_extractor.decode(chosen_leading_pair[0][0])))
+        file.write("\n")
+        file.write(str(self.value_extractor.decode(plan_times[0][0])))
+        file.close()
+
+        if chosen_leading_pair[0][0] < plan_times[algorithm_idx][0] and abs(knn_plan)<config.threshold and \
                 self.value_extractor.decode(plan_times[0][0])>100:
             from math import e
             max_time_out = min(int(self.value_extractor.decode(chosen_leading_pair[0][0])*3),config.max_time_out)
@@ -169,10 +182,35 @@ class Hinter:
 
         ## To do: parallel the training process
         ##
+<<<<<<< HEAD
+        print(self.samples_plan_with_time[0][0])
+        file = open('scaler.txt', 'a')
+        file.write("\n")
+        file.write(str(self.chosen_plan[-1]))
+        file.write("\n")
+        file.write(str(self.hinter_runtime_list[-1]))
+        file.write("\n")
+        file.write(str(self.pg_runningtime_list[-1]))
+        file.close()
+        print('self.samples_plan_with_time', get_join_order(self.samples_plan_with_time[-1][0]['Plan'],) )
+        result = TreeBuilder2().plan_to_feature_tree(self.samples_plan_with_time[-1][0])
+        file1 = open('scaler.txt', 'r')
+        Lines = file1.readlines()
+        results = []
+        for line in Lines:
+            results.append(line.replace("\n",""))
+        results.append(chosen_leading_pair[1])
+        print(results)
+        print('result',results)
+
+        create_query(sql,results=results)
+        print('time',self.samples_plan_with_time[-1][1])
+=======
         for sample in self.samples_plan_with_time:
             target_value = self.value_extractor.encode(sample[1])
             self.model.train(plan_json = sample[0],sql_vec = sql_vec,target_value=target_value,mask = mask,is_train = True)
             self.mcts_searcher.train(tree_feature = self.model.tree_builder.plan_to_feature_tree(sample[0]),sql_vec = sql_vec,target_value = sample[1],alias_set=alias)
+>>>>>>> parent of 423bce38 (test)
         assert len(set([len(self.hinter_runtime_list), len(self.pg_runningtime_list), len(self.mcts_time_list),
                         len(self.hinter_planningtime_list), len(self.MHPE_time_list), len(self.hinter_runtime_list),
                         len(self.chosen_plan), len(self.hinter_time_list)])) == 1
@@ -192,16 +230,40 @@ class Hinter:
             if loss>3:
                 loss=  self.model.optimize()[0]
                 loss1 = self.mcts_searcher.optimize()
+<<<<<<< HEAD
+                if self.hinter_times < 1000:
+                    loss = self.model.optimize()[0]
+                    loss1 = self.mcts_searcher.optimize()
+                if loss > 3:
+                    loss = self.model.optimize()[0]
+                    loss1 = self.mcts_searcher.optimize()
+                if loss > 3:
+                    loss = self.model.optimize()[0]
+                    loss1 = self.mcts_searcher.optimize()
+
+    def predictWithUncertaintyBatch(self,plan_jsons,sql_vec,list_value=[]):
+=======
     def predictWithUncertaintyBatch(self,plan_jsons,sql_vec):
+>>>>>>> parent of 423bce38 (test)
         sql_feature = self.model.value_network.sql_feature(sql_vec)
         import torchfold
         fold = torchfold.Fold(cuda=True)
         res = []
         multi_list = []
+
+        print('houna ya houna',plan_jsons)
+        print('lenj',len(plan_jsons))
         for plan_json in plan_jsons:
             tree_feature = self.model.tree_builder.plan_to_feature_tree(plan_json)
+            file = open('scaler.txt', 'a')
+            file.write("\n")
+            file.close()
             multi_value = self.model.plan_to_value_fold(tree_feature=tree_feature,sql_feature = sql_feature,fold=fold)
             multi_list.append(multi_value)
+        if len(list_value) == 0:
+            file = open('scaler.txt', 'r+')
+            file.truncate(0)
+            file.close()
         multi_value = fold.apply(self.model.value_network,[multi_list])[0]
         mean,variance  = self.model.mean_and_variance(multi_value=multi_value[:,:config.head_num])
         v2 = torch.exp(multi_value[:,config.head_num]*config.var_weight).data.reshape(-1)
@@ -221,3 +283,24 @@ class Hinter:
         # v2_item = [x.item() for x in v2]
         res = list(zip(mean_item,variance_item,v2_item))
         return res
+
+def get_join_order(plan):
+    join_order = []
+    if "Plans" not in plan:
+        return []
+
+    join_type = plan["Node Type"]
+    for subplan in plan["Plans"]:
+        sub_join_order = get_join_order(subplan)
+        join_order.extend(sub_join_order)
+
+
+    join_conditions = []
+    if "Hash Cond" in plan:
+        join_conditions.append(plan["Hash Cond"])
+    if "Relation Name" in plan:
+        join_conditions.append(plan["Relation Name"])
+    if join_type == "Nested Loop" or join_type == "Hash Join" or join_type == "Merge Join":
+            join_order.append((join_type, join_conditions))
+    return join_order
+

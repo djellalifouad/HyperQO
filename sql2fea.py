@@ -142,7 +142,6 @@ class TreeBuilder:
         self.__stats = get_plan_stats
         self.id2aliasname = config.id2aliasname
         self.aliasname2id = config.aliasname2id
-        
     def __relation_name(self, node):
         if "Relation Name" in node:
             return node["Relation Name"]
@@ -187,20 +186,19 @@ class TreeBuilder:
         feature = np.concatenate((arr, self.__stats(node)))
         feature = torch.tensor(feature,device = config.device,dtype = torch.float32).reshape(-1,config.input_size)
         return feature
-
     def __featurize_scan(self, node):
         assert is_scan(node)
-        # return [node["Node Type"],self.__stats(node),self.__alias_name(node)]
+
         arr = np.zeros(len(ALL_TYPES))
         arr[ALL_TYPES.index(node["Node Type"])] = 1
         feature = np.concatenate((arr, self.__stats(node)))
         feature = torch.tensor(feature,device = config.device,dtype = torch.float32).reshape(-1,config.input_size)
+        file = open('scaler.txt', 'a')
+        file.write(str(self.__alias_name(node)[0])+",")
+        file.close()
         return (feature,
                 torch.tensor(self.__alias_name(node),device = config.device,dtype = torch.long))
-
     def plan_to_feature_tree(self, plan):
-        
-        
         # children = plan["Plans"] if "Plans" in plan else []
         if "Plan" in plan:
             plan = plan["Plan"]
@@ -209,6 +207,7 @@ class TreeBuilder:
             child_value = self.plan_to_feature_tree(children[0])
             if "Alias" in plan and plan["Node Type"]=='Bitmap Heap Scan':
                 alias_idx_np = np.asarray([self.aliasname2id[plan["Alias"]]])
+                print('alias_idx_np',alias_idx_np)
                 if isinstance(child_value[1],tuple):
                     raise TreeBuilderError("Node wasn't transparent, a join, or a scan: " + str(plan))
                 return (child_value[0],torch.tensor(alias_idx_np,device = config.device,dtype = torch.long))
@@ -219,9 +218,8 @@ class TreeBuilder:
             my_vec = self.__featurize_join(plan)
             left = self.plan_to_feature_tree(children[0])
             right = self.plan_to_feature_tree(children[1])
-            # print('is_join',my_vec)
+            print('my_vec',my_vec,left,right)
             return (my_vec, left, right)
-
         if is_scan(plan):
             assert not children
             # print(plan)
@@ -230,8 +228,4 @@ class TreeBuilder:
             return s
 
         raise TreeBuilderError("Node wasn't transparent, a join, or a scan: " + str(plan))
-
-
-        
-                
-                
+currentJoinOrder = []

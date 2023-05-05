@@ -12,6 +12,7 @@ aliasname2id = {'kt1': 31, 'chn': 1, 'cn1': 29, 'mi_idx2': 36, 'cct1': 23, 'n': 
 class HybridAdapter:
     @staticmethod
     def adaptReturn(query):
+        print('return',query)
         parsed_query = moz_sql_parser.parse(query)
         tables = parsed_query['from']
         join_order =  np.zeros(config.max_hint_num)

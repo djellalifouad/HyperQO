@@ -150,6 +150,7 @@ class PGGRunner:
             return self.cost_plan_json[sql]
         import time
         startTime = time.time()
+        self.cur.execute("SET max_parallel_workers = 1;")
         self.cur.execute("SET statement_timeout = "+str(timeout)+ ";")
         self.cur.execute("SET geqo_threshold  = 12;")
         self.cur.execute("explain (COSTS, FORMAT JSON) "+sql)
@@ -166,7 +167,6 @@ class PGGRunner:
         """
         plan_json = self.getCostPlanJson(sql)
         return plan_json['Plan']['Total Cost'],0
-        
     def getSelectivity(self,table,whereCondition):
         global latency_record_dict
         if whereCondition in latency_record_dict:

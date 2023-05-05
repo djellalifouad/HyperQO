@@ -68,7 +68,6 @@ class TargetTable:
     def getValue(self,):
         columnRef = self.target["val"]["FuncCall"]["args"][0]["ColumnRef"]["fields"]
         return columnRef[0]["String"]["str"]+"."+columnRef[1]["String"]["str"]
-
     def __str__(self,):
         try:
             return self.target["val"]["FuncCall"]["funcname"][0]["String"]["str"]+"(" + self.getValue() + ")" + " AS " + self.target['name']
@@ -77,7 +76,6 @@ class TargetTable:
                 return "count(*)"
             else:
                 return "*"
-
 class FromTable:
     def __init__(self, from_table):
         """

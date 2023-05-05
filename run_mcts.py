@@ -33,9 +33,7 @@ s4 = 0
 s_pg = 0
 s_hinter = 0
 totalTime  = 0
-print('7 tables')
-print('résultat des 12 tables')
-folder_path = './datasetS/12/'
+folder_path = './datasetS/7/'
 import  os
 index = 0
 files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
@@ -45,7 +43,7 @@ print(len(files_sorted))
 for filename in files_sorted:
     print('index',index)
     index += 1
-    if index > 200:
+    if index > 1:
         break
     # Get the full path of the file
     filepath = os.path.join(folder_path, filename)
@@ -91,8 +89,8 @@ print('hna')
 print(len(files_sorted))
 for filename in files_sorted:
     print('index',index)
-    index += 1
-    if index > 200:
+    #index += 1
+    if index == 0:
         break
     # Get the full path of the file
     filepath = os.path.join(folder_path, filename)
@@ -128,7 +126,7 @@ s_pg = 0
 s_hinter = 0
 totalTime  = 0
 print('7 tables')
-folder_path = './datasetS/17/'
+folder_path = './datasetS/4/'
 print('résultat des 17 tables')
 index = 0
 files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
@@ -137,8 +135,8 @@ print('hna')
 print(len(files_sorted))
 for filename in files_sorted:
     print('index',index)
-    index += 1
-    if index > 200:
+    #index += 1
+    if index == 0:
         break
     # Get the full path of the file
     filepath = os.path.join(folder_path, filename)
@@ -167,3 +165,4 @@ for filename in files_sorted:
         print("%.4f %.4f %.4f %.4f %.4f %.4f %.4f" % (s1, s2, s3, s4, s_pg, s_hinter, s_hinter / s_pg))
     import json
 sys.stdout.flush()
+
