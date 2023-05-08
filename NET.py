@@ -12,10 +12,10 @@ Transition = namedtuple('Transition',
                     ('tree_feature', 'sql_feature', 'target_feature', 'mask','weight'))
 import random
 class ReplayMemory(object):
-    def __init__(self, capacity,elements):
+    def __init__(self, capacity):
         self.capacity = capacity
-        self.memory = elements
-        self.position = len(elements)
+        self.memory = []
+        self.position = 0
     def push(self, *args):
         """Saves a transition."""
         if len(self.memory) < self.capacity:
@@ -70,7 +70,7 @@ class TreeNet:
         self.value_network = value_network#TreeLSTM.SPINN
         self.optimizer = optim.Adam(value_network.parameters(),
                                     lr = 3e-4   ,betas=(0.9,0.999))
-        self.memory = ReplayMemory(config.mem_size,config.mem_element)
+        self.memory = ReplayMemory(config.mem_size)
         self.loss_function = MSEVAR(config.var_weight)
         # self.loss_function = F.smooth_l1_loss
     def plan_to_value(self,tree_feature,sql_feature):

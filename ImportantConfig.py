@@ -3,7 +3,7 @@ from math import log
 class Config:
     def __init__(self,):
         #change join order algorithm {mcts, ii, minSel,sa,rtos}
-        self.join_order_algorithm = 'ii'
+        self.join_order_algorithm = 'mcts'
         self.datafile = 'JOBqueries.workload'
         self.schemaFile = "schema.sql"
         self.database = 'imdb'

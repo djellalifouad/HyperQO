@@ -4,10 +4,15 @@ import re
 import moz_sql_parser
 from moz_sql_parser import parse
 import requests
-
+from ImportantConfig import Config
+from sql2fea import Sql2Vec
+config = Config()
+sql2vec = Sql2Vec()
 BASE_URL = 'http://127.0.0.1:8000'
 headers = {'content-type': 'application/json'}
-alias_name_2_table_name = {'chn': 'char_name', 'ci': 'cast_info', 'cn': 'company_name', 'cn1': 'company_name',
+alias_name_2_table_name = {
+ 'a1' : 'aka_name' ,
+    'chn': 'char_name', 'ci': 'cast_info', 'cn': 'company_name', 'cn1': 'company_name',
                            'cn2': 'company_name', 'ct': 'company_type', 'mc': 'movie_companies',
                            'mc1': 'movie_companies', 'mc2': 'movie_companies', 'rt': 'role_type', 't': 'title',
                            't1': 'title', 't2': 'title', 'k': 'keyword', 'lt': 'link_type', 'mk': 'movie_keyword',
@@ -15,8 +20,7 @@ alias_name_2_table_name = {'chn': 'char_name', 'ci': 'cast_info', 'cn': 'company
                            'mi_idx2': 'movie_info_idx', 'mi_idx1': 'movie_info_idx', 'miidx': 'movie_info_idx',
                            'kt': 'kind_type', 'kt1': 'kind_type', 'kt2': 'kind_type', 'at': 'aka_title',
                            'an': 'aka_name', 'an1': 'aka_name', 'cc': 'complete_cast', 'cct1': 'comp_cast_type',
-                           'cct2': 'comp_cast_type', 'it': 'info_type', 'it1': 'info_type', 'it2': 'info_type',
-                           'pi': 'person_info', 'n1': 'name', 'n': 'name'}
+                           'cct2': 'comp_cast_type', 'it': 'info_type', 'it1': 'info_type', 'it2': 'info_type','it3': 'info_type','pi': 'person_info', 'n1': 'name', 'n': 'name'}
 
 operator_map = {
     "eq": "=",
@@ -63,7 +67,9 @@ def update_query_join_order(query_id, join_order):
 
 
 def create_query(query,results):
+    print('the latest query',query)
     json_object = parse_sql_query(query,result=results)
+    print(json.dumps(json_object,indent=4))
     response = requests.post(BASE_URL + '/queries/', data=json.dumps(json_object), headers=headers)
 
     if response.status_code == 200:
@@ -71,8 +77,6 @@ def create_query(query,results):
         return query_id
     else:
         return None
-
-
 def parse_sql_query(sql_query, result=[]):
     parsed_query = parse(sql_query)
 
@@ -83,7 +87,13 @@ def parse_sql_query(sql_query, result=[]):
     where_clause = parsed_query.get('where')
     join_clause = parsed_query.get('join')
     # Create the JSON object
-    json_object = {
+    list_join = result[0][:-1].split(',')
+    print(list_join)
+    string_join1 = [config.id2aliasname[int(x)] for x in list_join]
+    list_join = result[1][:-1].split(',')
+    string_join2 = [config.id2aliasname[int(x)] for x in list_join]
+    if len(result)> 0:
+        json_object = {
         "query": sql_query,
         "table": [],
         "selection": [],
@@ -91,14 +101,27 @@ def parse_sql_query(sql_query, result=[]):
         "join": [],
         "execution_time_hybride": result[5],
         "execution_time_pg": result[6],
-       "estimated_execution_time1":result[2],
-    "estimated_execution_time2":result[3] ,
-    "join_order1":result[0],
-    "join_order2":result[1],
-    "choosed_plan":result[4] ,
-    "prefix":result[7],
+        "estimated_execution_time1":result[2],
+        "estimated_execution_time2":result[3] ,
+        "join_order1":str(string_join1),
+        "join_order2":str(string_join2),
+        "choosed_plan":result[4] ,
+        "prefix":result[7],
     }
-
+    else:
+        json_object = {
+            "query": sql_query,
+            "table": [],
+            "selection": [],
+            "projection": [],
+            "join": [],
+          #  "execution_time_pg": result[6],
+          # "estimated_execution_time2": result[3],
+           # "join_order1": result[0],
+           # "join_order2": result[1],
+           # "choosed_plan": result[4],
+            # "prefix": result[7],
+        }
     # Add table IDs to the JSON object
     for table in parsed_tables:
         table_id = get_table_id(table['value'])
@@ -108,7 +131,7 @@ def parse_sql_query(sql_query, result=[]):
     # Add projections to the JSON object
     projections, projection_aliases = get_query_projections(parsed_select)
     for index, value in enumerate(projections):
-        if projection_aliases[index]:
+        if not value['all']:
             value['alias'] = projection_aliases[index]
         else:
             value['alias'] = ''
@@ -143,21 +166,29 @@ def get_query_projections(parsed_select):
                 if isinstance(value, str):
                     projection_aliases.append(value)
     else:
-        for prop, value in parsed_select.items():
+        if not isinstance(parsed_select,list):
+          parsed_select = parsed_select.items()
+        for prop, value in parsed_select:
             projection = {}
             if isinstance(value, dict):
                 key_list = list(value.keys())
                 key = key_list[0]
-                projection['all'] = False
-                projection['aggregation'] = key
-                projection['projection'] = f"{key} ({value[key]})"
-                projection['attribute_id'] = get_attribute_id(value[key].split('.')[1],
-                                                              alias_name_2_table_name[value[key].split('.')[0]])
+
+                if key == 'count':
+                   projection['all'] = True
+                   projection['aggregation'] = key
+                   projection['projection'] = f"{key}(*)"
+                   projection['attribute_id'] =None
+                else:
+                    projection['all'] = False
+                    projection['aggregation'] = key
+                    projection['projection'] = f"{key} ({value[key]})"
+                    projection['attribute_id'] = get_attribute_id(value[key].split('.')[1],
+                                                                  alias_name_2_table_name[value[key].split('.')[0]])
                 projections.append(projection)
             if isinstance(value, str):
                 projection_aliases.append(value)
     return projections, projection_aliases
-
 
 def get_join_conditions(parsed_query):
     table_aliases = [table['name'] for table in parsed_query['from']]
@@ -166,7 +197,6 @@ def get_join_conditions(parsed_query):
 
     joins = []
     selection_conditions = []
-
     for condition in join_conditions:
         join = {}
         join_attributes = []

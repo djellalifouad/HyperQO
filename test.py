@@ -1,9 +1,5 @@
 import json
-
-
 import json
-
-
 def get_join_order(plan):
     join_order = []
     if "Plans" not in plan:
@@ -22,7 +18,6 @@ def get_join_order(plan):
     if join_type == "Nested Loop" or join_type == "Hash Join" or join_type == "Merge Join":
         join_order.append((join_type, join_conditions))
     return join_order
-
 # load the JSON data
 with open("data.json") as f:
     data = json.load(f)

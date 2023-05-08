@@ -7,7 +7,6 @@ from tracemalloc import start
 import numpy as np
 from ImportantConfig import Config
 config = Config()
-
 # from models import ValueNet
 import torch
 model_path = './model/log_c3_h64_s4_t3.pth'
@@ -20,7 +19,6 @@ for name, param in predictionNet.named_parameters():
         init.xavier_normal(param)
     else:
         init.uniform(param)
-
 predictionNet.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
 import torch.nn.functional as F
 import torch.optim as optim
@@ -28,7 +26,6 @@ import torch
 optimizer = optim.Adam(predictionNet.parameters(),lr = 3e-4   ,betas=(0.9,0.999))
 # optimizer = optim.SGD(predictionNet.parameters(),lr = 3e-5 )
 loss_function = F.smooth_l1_loss
-
 def getValue(inputState1,inputState2):
     with torch.no_grad():
         predictionRuntime = predictionNet(inputState1,inputState2)
@@ -224,7 +221,6 @@ class MCTSMemory(object):
     def resetMemory(self,):
         self.memory =[]
         self.position = 0
-
 class mcts():
     def __init__(self, iterationLimit=None, explorationConstant=1 / math.sqrt(16),
                  rolloutPolicy=randomPolicy):
