@@ -195,12 +195,10 @@ class TreeBuilder:
         arr[ALL_TYPES.index(node["Node Type"])] = 1
         feature = np.concatenate((arr, self.__stats(node)))
         feature = torch.tensor(feature,device = config.device,dtype = torch.float32).reshape(-1,config.input_size)
+
         return (feature,
                 torch.tensor(self.__alias_name(node),device = config.device,dtype = torch.long))
-
     def plan_to_feature_tree(self, plan):
-        
-        
         # children = plan["Plans"] if "Plans" in plan else []
         if "Plan" in plan:
             plan = plan["Plan"]

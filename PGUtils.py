@@ -31,6 +31,7 @@ class PGGRunner:
         self.need_latency_record = need_latency_record
 
         self.cur.execute("load 'pg_hint_plan';")
+        self.cur.execute("SET max_parallel_workers = 8")
         global latency_record_file
         self.cost_plan_json = {}
         if need_latency_record:
